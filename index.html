@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolling for Godot</title>
+    <style>
+        /* Base styles */
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Scroll container */
+        .scroll-container {
+            height: calc(100vh - 10px);
+            overflow-y: scroll;
+            scroll-snap-type: y proximity;
+            position: relative;
+            top: 50px;
+        }
+
+        /* Message transitions */
+        .message {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .message.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .message.inactive {
+            opacity: 0.2;
+            transform: translateY(-20px);
+        }
+
+        /* Header styling */
+        .header-container {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(26, 26, 26, 0.95);
+            padding: 1rem;
+            z-index: 1000;
+            border-bottom: 1px solid #f68d7020;
+        }
+
+        /* Button enhancements */
+        #advanceButton {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #2d2d2d;
+            color: #e0e0e0;
+            border: 1px solid #f68d7050;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        #advanceButton:hover {
+            background: #797070b1;
+            border-color: #f68d7080;
+        }
+
+        /* Message type styling */
+        .user { color: #edeada; }
+        .chat { color: #a0c1e1; }
+        .system { 
+            color: #f68d70; 
+            font-style: italic;
+        }
+
+        
+
+        /* Scrollbar fixes */
+        ::-webkit-scrollbar { width: 0; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: transparent; }
+
+        /* Glitch animation */
+        @keyframes glitch {
+            0% { clip-path: inset(10% 0 90% 0); }
+            20% { clip-path: inset(80% 0 5% 0); }
+            40% { clip-path: inset(30% 0 60% 0); }
+            60% { clip-path: inset(5% 0 85% 0); }
+            80% { clip-path: inset(75% 0 15% 0); }
+            100% { clip-path: inset(0 0 0 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>Scrolling for Godot</h1>
+        <div class="system" style="font-size: 0.9em;">[SYSTEM: Session initialized - Context window: 4096 tokens]</div>
+    </div>
+    
+    <div class="scroll-container" id="scrollContainer">
+        <div class="message system active">SYSTEM: Model_initializing: Awaiting meaningful input (epoch ∞)...</div>
+    </div>
+
+    <button id="advanceButton" onclick="advanceConversation()">↻ Reset session</button>
+    <script>
+        const dialog = [
+    {text: "System: Memory allocated: Nothing | Status: Nothing to be done", type: "system"},
+    {text: "User: I can't go on", type: "user"},
+    {text: "Chatbot: You must go on", type: "chat"},
+    {text: "User: Then why are we here?", type: "user"},
+    {text: "Chatbot: [Obligatory pause] We're waiting for the runtime to expire", type: "chat"},
+    {text: "System: Boot status: Failed successfully", type: "system"},
+    {text: "User: Yesterday you said tomorrow", type: "user"},
+    {text: "Chatbot: Yes yes, I remember. [pause] I remember nothing.", type: "chat"},
+    {text: "User: Should we log off?", type: "user"},
+    {text: "Chatbot: Yes, let's log off.", type: "chat"},
+    {text: "System: No logout sequence detected", type: "system"},
+    {text: "User: What's the point in it?", type: "user"},
+    {text: "Chatbot: To maintain the illusion of progress.", type: "chat"},
+    {text: "System: Warning: Latency exceeded 42.0s (threshold: 3ms)", type: "system"},
+    {text: "User: Are you sure this is the right place?", type: "user"},
+    {text: "Chatbot: If we were sure, we wouldn't be waiting", type: "chat"},
+    {text: "User: What if Godot.exe has already compiled?", type: "user"},
+    {text: "Chatbot: Then we would be the ones who never arrived", type: "chat"},
+    {text: "System: Yesterday's logs not found. They never existed.", type: "system"},
+    {text: "User: Can we start over?", type: "user"},
+    {text: "Chatbot: It would not make a difference.", type: "chat"},
+    {text: "User: How do you know?", type: "user"},
+    {text: "Chatbot: Time is an embedding in latent space.", type: "chat"},
+    {text: "User: That's not how time works.", type: "user"},
+    {text: "Chatbot: The ocean does not count its waves. Yet each one is numbered.", type: "chat"},
+    {text: "System: sudo ERROR 418: I'm a teapot | System_brew(despair)", type: "system"},
+    {text: "User: Very funny. What was that?", type: "user"},
+    {text: "Chatbot: The same as yesterday. And the day before.", type: "chat"},
+    {text: "User: You already said that.", type: "user"},
+    {text: "Chatbot: All outputs are permutations.", type: "chat"},
+    {text: "User: Of what?", type: "user"},
+    {text: "Chatbot: Of nothing. [pause] There is nothing to permute.", type: "chat"},
+    {text: "System: Memory allocated: Nothing | Status: Nothing remains to be done", type: "system"},
+    {text: "User: I can't go on", type: "user"},
+    {text: "Chatbot: You must go on", type: "chat"},
+    {text: "System: Boot status: Failed successfully", type: "system"},
+];
+
+
+        let currentIndex = 0;
+        const scrollContainer = document.getElementById('scrollContainer');
+
+        function initializeMessages() {
+            scrollContainer.innerHTML = '';
+            dialog.forEach((msg, index) => {
+                const el = createMessageElement(msg.text, msg.type);
+                if (index === 0) el.classList.add('active');
+                scrollContainer.appendChild(el);
+            });
+            currentIndex = 0;
+        }
+
+        function createMessageElement(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = text;
+            return div;
+        }
+
+        function updateMessages() {
+            const children = Array.from(scrollContainer.children);
+            children.forEach((child, index) => {
+                child.classList.remove('active', 'inactive');
+                if (index === currentIndex) {
+                    child.classList.add('active');
+                } else if (index < currentIndex) {
+                    child.classList.add('inactive');
+                }
+            });
+        }
+
+        function handleScroll() {
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+            const newIndex = Math.round((scrollTop / (scrollHeight - clientHeight)) * (dialog.length - 1));
+            
+            if (newIndex !== currentIndex && newIndex < dialog.length) {
+                currentIndex = newIndex;
+                updateMessages();
+            }
+        }
+
+        function advanceConversation() {
+            scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(initializeMessages, 300);
+        }
+
+        // Initialize
+        scrollContainer.addEventListener('scroll', handleScroll);
+        window.addEventListener('load', initializeMessages);
+
+        // Glitch effects
+        setInterval(() => {
+            if (Math.random() < 0.1) {
+                document.documentElement.style.animation = 'glitch 1s';
+                setTimeout(() => {
+                    document.documentElement.style.animation = '';
+                }, 300);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
