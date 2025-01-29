@@ -1,5 +1,5 @@
 # Scrolling For Godot
-A web-based absurdist scrollplay where human, chatbot, and system messages drift through conversation. A digital reimagining of Beckett's "Waiting for Godot" through the lens of AI interfaces and system errors.
+A web-based absurdist scrollplay where human, chatbot, and system messages drift through conversation, reimagining Beckett's "Waiting for Godot" through the lens of LLM interfaces and system errors.
 
 ## Features
 * Smooth scroll animations
