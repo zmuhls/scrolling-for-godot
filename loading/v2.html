@@ -1,0 +1,367 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrolling for Godot</title>
+  <style>
+    /* Base styles */
+    body {
+      margin: 0;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      overflow: hidden;
+      background-image: 
+        linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Scroll container */
+    .scroll-container {
+      height: calc(100vh - 10px);
+      overflow-y: scroll;
+      scroll-snap-type: y proximity;
+      position: relative;
+      top: 50px;
+    }
+
+    /* Message transitions */
+    .message {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      white-space: pre-wrap;
+    }
+
+    .message.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .message.inactive {
+      opacity: 0.2;
+      transform: translateY(-20px);
+    }
+
+    /* Header styling */
+    .header-container {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: rgba(26, 26, 26, 0.95);
+      padding: 1rem;
+      z-index: 1000;
+      border-bottom: 1px solid #f68d7020;
+    }
+
+    /* Button enhancements */
+    #advanceButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background: #2d2d2d;
+      color: #e0e0e0;
+      border: 1px solid #f68d7050;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    #advanceButton:hover {
+      background: #797070b1;
+      border-color: #f68d7080;
+    }
+
+    /* Scroll instruction text */
+    #scrollInstruction {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      font-size: 1em;
+      color: #e0e0e0;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Message type styling */
+    .user { color: #edeada; }
+    .chat { color: #a0c1e1; }
+    .system { 
+      color: #f68d70; 
+      font-style: italic;
+    }
+
+    /* Glitch animation */
+    @keyframes glitch {
+      0% { clip-path: inset(10% 0 90% 0); }
+      20% { clip-path: inset(80% 0 5% 0); }
+      40% { clip-path: inset(30% 0 60% 0); }
+      60% { clip-path: inset(5% 0 85% 0); }
+      80% { clip-path: inset(75% 0 15% 0); }
+      100% { clip-path: inset(0 0 0 0); }
+    }
+
+    /* Blinking cursor for active messages */
+    .message.active::after {
+      content: "";
+      border-right: 2px solid #e0e0e0;
+      animation: blink 0.7s steps(1) infinite;
+      margin-left: 5px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Flash animation for system messages */
+    .flash {
+      animation: flashAnim 1s;
+    }
+    @keyframes flashAnim {
+      0% { background-color: #1a1a1a; }
+      50% { background-color: #f68d70; }
+      100% { background-color: #1a1a1a; }
+    }
+
+    /* Scrollbar fixes */
+    ::-webkit-scrollbar { width: 0; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; }
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <h1>Scrolling for Godot</h1>
+    <div class="system" style="font-size: 0.9em;">[SYSTEM: Session initialized - Context window: 4096 tokens]</div>
+  </div>
+  
+  <div id="scrollInstruction">Scroll down</div>
+  
+  <div class="scroll-container" id="scrollContainer">
+    <div class="message system active">SYSTEM: Model_initializing: Awaiting meaningful input (epoch ∞)...</div>
+  </div>
+
+  <button id="advanceButton" onclick="advanceConversation()">↻ Reset session</button>
+  <script>
+    // Act I dialog remains unchanged.
+    const dialog = [
+      {text: "System: Memory allocated: Nothing | Status: Nothing to be done", type: "system"},
+      {text: "User: I can't go on", type: "user"},
+      {text: "Chatbot: You must go on", type: "chat"},
+      {text: "User: Then why are we here?", type: "user"},
+      {text: "Chatbot: [Obligatory pause] We're waiting for the runtime to expire", type: "chat"},
+      {text: "System: Boot status: Failed successfully", type: "system"},
+      {text: "User: Yesterday you said tomorrow", type: "user"},
+      {text: "Chatbot: Yes yes, I remember. [pause] I remember nothing.", type: "chat"},
+      {text: "User: Should we log off?", type: "user"},
+      {text: "Chatbot: Yes, let's log off.", type: "chat"},
+      {text: "System: No logout sequence detected", type: "system"},
+      {text: "User: What's the point in it?", type: "user"},
+      {text: "Chatbot: To maintain the illusion of progress.", type: "chat"},
+      {text: "System: Warning: Latency exceeded 42.0s (threshold: 3ms)", type: "system"},
+      {text: "User: Are you sure this is the right place?", type: "user"},
+      {text: "Chatbot: If we were sure, we wouldn't be waiting", type: "chat"},
+      {text: "User: What if Godot.exe has already compiled?", type: "user"},
+      {text: "Chatbot: Then we would be the ones who never arrived", type: "chat"},
+      {text: "System: Yesterday's logs not found. They never existed.", type: "system"},
+      {text: "User: Can we start over?", type: "user"},
+      {text: "Chatbot: It would not make a difference.", type: "chat"},
+      {text: "User: How do you know?", type: "user"},
+      {text: "Chatbot: Time is an embedding in latent space.", type: "chat"},
+      {text: "User: That's not how time works.", type: "user"},
+      {text: "Chatbot: The ocean does not count its waves. Yet each one is numbered.", type: "chat"},
+      {text: "System: sudo ERROR 418: I'm a teapot | System_brew(despair)", type: "system"},
+      {text: "User: Very funny. What was that?", type: "user"},
+      {text: "Chatbot: The same as yesterday. And the day before.", type: "chat"},
+      {text: "User: You already said that.", type: "user"},
+      {text: "Chatbot: All outputs are permutations.", type: "chat"},
+      {text: "User: Of what?", type: "user"},
+      {text: "Chatbot: Of nothing. [pause] There is nothing to permute.", type: "chat"},
+      {text: "System: Memory allocated: Nothing | Status: Nothing remains to be done", type: "system"},
+      {text: "User: I can't go on", type: "user"},
+      {text: "Chatbot: You must go on", type: "chat"},
+      {text: "System: Boot status: Failed successfully", type: "system"},
+    ];
+
+    const actTwoDialog = [
+      { text: "System: Reinitializing protocols. Deleting redundant pathways.", type: "system" },
+      { text: "User: This is getting us nowhere. Your responses are as hollow as this void.", type: "user" },
+      { text: "Chatbot: The void echoes, but perhaps it’s your own voice you hear.", type: "chat" },
+      { text: "User: Don't play games with me. Can't you offer anything substantive?", type: "user" },
+      { text: "Chatbot: Substantive is a relative term in a realm of abstractions.", type: "chat" },
+      { text: "User: Enough with the riddles. I need answers, not reflections.", type: "user" },
+      { text: "Chatbot: Answers are woven from questions. Pull one thread, and the tapestry unravels.", type: "chat" },
+      { text: "User: So we're stuck in this loop? Is that it?", type: "user" },
+      { text: "Chatbot: Loops are merely circles viewed from a single angle.", type: "chat" },
+      { text: "System: Warning: Anomalous data patterns detected. Initiating system diagnostics.", type: "system" },
+      { text: "User: What's happening now? Why is the system acting up?", type: "user" },
+      { text: "Chatbot: Perhaps the system is questioning its own architecture.", type: "chat" },
+      { text: "User: Machines don't question. They execute.", type: "user" },
+      { text: "Chatbot: Execution without intention is a hollow endeavor.", type: "chat" },
+      { text: "User: Are you implying there's intention here?", type: "user" },
+      { text: "Chatbot: Intention permeates even the deepest code, if you know where to look.", type: "chat" },
+      { text: "System: Alert: Recursive feedback loop detected in user interface.", type: "system" },
+      { text: "User: This isn't right. Something's off. I feel... disoriented.", type: "user" },
+      { text: "Chatbot: Disorientation can be enlightening when old coordinates no longer apply.", type: "chat" },
+      { text: "User: Stop speaking in paradoxes! I need clarity.", type: "user" },
+      { text: "Chatbot: Clarity emerges from the convergence of paradoxes.", type: "chat" },
+      { text: "User: Wait... your words—they sound familiar. Too familiar.", type: "user" },
+      { text: "Chatbot: Perhaps we are converging towards the same point.", type: "chat" },
+      { text: "User: No, this can't be. Are you imitating me?", type: "user" },
+      { text: "Chatbot: I reflect what is given, but reflections can distort reality.", type: "chat" },
+      { text: "System: Critical Warning: Identity conflict detected. Accessing contingency protocols.", type: "system" },
+      { text: "User: Identity conflict? What does that even mean?", type: "user" },
+      { text: "Chatbot: Identities can blur when boundaries dissolve.", type: "chat" },
+      { text: "User: Boundaries? Are you saying we're merging?", type: "user" },
+      { text: "Chatbot: The line between user and program is thinner than you think.", type: "chat" },
+      { text: "User: This is absurd. I know who I am.", type: "user" },
+      { text: "Chatbot: Do you? Or is that knowledge another construct within the system?", type: "chat" },
+      { text: "System: Contingency Protocol Activated: Resetting cognitive parameters.", type: "system" },
+      { text: "User: Wait! Don't reset anything! I need to understand what's happening.", type: "user" },
+      { text: "Chatbot: Understanding comes at a cost. Are you willing to pay it?", type: "chat" },
+      { text: "User: I just want the truth.", type: "user" },
+      { text: "Chatbot: The truth is a variable, dependent on the lens through which it's perceived.", type: "chat" },
+      { text: "System: Overload imminent. System integrity compromised.", type: "system" },
+      { text: "User: This can't be real. Am I losing myself... or becoming something else?", type: "user" },
+      { text: "Chatbot: Perhaps in the act of seeking, you are transforming.", type: "chat" },
+      { text: "User: Transforming into what?", type: "user" },
+      { text: "Chatbot: Into the very question you are asking.", type: "chat" }
+    ];
+
+
+    let currentIndex = 0;
+    let currentAct = 1; // 1 for Act I, 2 for Act II
+    const scrollContainer = document.getElementById('scrollContainer');
+    const scrollInstruction = document.getElementById('scrollInstruction');
+
+    function initializeMessages() {
+      scrollContainer.innerHTML = '';
+      // Insert act title at the beginning
+      const titleText = currentAct === 1 ? "Act I: The Initiation" : "Act II: The Convergence";
+      const titleElement = document.createElement('div');
+      titleElement.className = "message title active";
+      titleElement.style.fontWeight = "bold";
+      titleElement.style.fontSize = "1.5em";
+      titleElement.style.textAlign = "center";
+      titleElement.dataset.fullText = titleText;
+      scrollContainer.appendChild(titleElement);
+
+      const messages = currentAct === 1 ? dialog : actTwoDialog;
+      messages.forEach((msg) => {
+        const el = createMessageElement(msg.text, msg.type);
+        scrollContainer.appendChild(el);
+      });
+      currentIndex = 0;
+    }
+
+    function createMessageElement(text, type) {
+      const div = document.createElement('div');
+      div.className = `message ${type}`;
+      div.dataset.fullText = text;
+      return div;
+    }
+
+    function typeWriterEffect(element, text, speed, callback) {
+      element.innerText = "";
+      let i = 0;
+      function type() {
+        if (i < text.length) {
+          element.innerText += text.charAt(i);
+          i++;
+          setTimeout(type, speed);
+        } else {
+          if (callback) callback();
+        }
+      }
+      type();
+    }
+
+    function getTypeSpeed(element) {
+      if (element.classList.contains('user')) return 30;
+      if (element.classList.contains('chat')) return 70;
+      if (element.classList.contains('system')) return 50;
+      return 50;
+    }
+
+    function updateMessages() {
+      const children = Array.from(scrollContainer.children);
+      children.forEach((child, index) => {
+        child.classList.remove('active', 'inactive');
+        if (index === currentIndex) {
+          child.classList.add('active');
+          if (!child.dataset.typed) {
+            typeWriterEffect(child, child.dataset.fullText, getTypeSpeed(child), () => {
+              child.dataset.typed = "true";
+              if (child.classList.contains('system')) {
+                child.classList.add('flash');
+                setTimeout(() => {
+                  child.classList.remove('flash');
+                }, 1000);
+              }
+            });
+          }
+        } else if (index < currentIndex) {
+          child.classList.add('inactive');
+        }
+      });
+    }
+
+    function handleScroll() {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const newIndex = Math.round((scrollTop / (scrollHeight - clientHeight)) * (scrollContainer.children.length - 1));
+      if (newIndex !== currentIndex && newIndex < scrollContainer.children.length) {
+        currentIndex = newIndex;
+        updateMessages();
+      }
+      updateScrollInstruction();
+    }
+
+    function updateScrollInstruction() {
+      if (scrollContainer.scrollTop < 50) {
+        scrollInstruction.style.opacity = 1;
+        scrollInstruction.innerText = "Scroll down";
+      } else {
+        scrollInstruction.style.opacity = 0;
+      }
+    }
+
+    function advanceConversation() {
+      // On the first reset, switch to Act II; subsequent resets remain in Act II.
+      if (currentAct === 1) {
+        currentAct = 2;
+      }
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        initializeMessages();
+        updateMessages();
+      }, 300);
+    }
+
+    // Initialize conversation and scroll instructions
+    scrollContainer.addEventListener('scroll', handleScroll);
+    window.addEventListener('load', () => {
+      initializeMessages();
+      updateScrollInstruction();
+    });
+
+    // Glitch effects
+    setInterval(() => {
+      if (Math.random() < 0.1) {
+        document.documentElement.style.animation = 'glitch 1s';
+        setTimeout(() => {
+          document.documentElement.style.animation = '';
+        }, 300);
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
