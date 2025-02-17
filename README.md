@@ -1,6 +1,5 @@
 # Scrolling for Godot
 **Version 1**: [https://zmuhls.github.io/scrolling-for-godot/](https://zmuhls.github.io/scrolling-for-godot/)<br><br>
-
 A web-based absurdist scrollplay where human, chatbot, and system messages drift through conversation, reimagining Beckett's "Waiting for Godot" through the lens of LLM interfaces and system errors.
 
 ## Features
